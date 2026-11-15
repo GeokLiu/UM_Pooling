@@ -30,6 +30,8 @@ This log is a mandatory appendix of the final report (Appendix D). Keep it in th
 
 | 7 | 2026-11-15 | Account: GeokLiu (member to confirm) | OpenAI Codex | Supplied definitions of public.handle_new_um_user and public.handle_new_user, both inserting the same profile; full SQL input in this conversation. | Confirmed duplicate signup triggers and corrected reviewed script 02. | Removed the duplicate on_auth_user_created trigger in the review script, retaining one UM-validated AFTER INSERT trigger and preserving the old function. | PostgreSQL and PL/pgSQL syntax parsed; git diff --check passed. Live application and signup tests NOT YET VERIFIED. |
 
+| 8 | 2026-11-15 | Account: GeokLiu (member to confirm) | OpenAI Codex | User supplied Android assembleDebug failure log in Pasted text.txt; metadata 2.4.0 versus compiler 2.2.0. | Diagnosed Firebase Analytics dependency incompatibility and compiler plugin version drift. | Pinned Firebase BoM 34.0.0 and aligned Compose/serialization plugin versions with built-in Kotlin 2.2.10. | Verified BoM mappings in Google Maven and measurement-impl 23.0.0 Kotlin module headers (2.1.0); catalog parse and git diff --check. Full Android rebuild/device run NOT YET VERIFIED. |
+
 ## Notes on authorship (fill in honestly)
 
 - **Origin of the idea:** [Describe who in the team proposed UMPooling and why, e.g. from personal experience with "sapu" rides. This shows the idea and problem choice are the team's own.]

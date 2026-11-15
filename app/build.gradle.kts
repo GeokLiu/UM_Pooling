@@ -63,7 +63,9 @@ android {
 }
 
 dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:35.2.0"))
+    // Analytics 24.0.0 in BoM 35.2.0 requires Kotlin 2.4 metadata support.
+    // Pin the compatible SDK set while using AGP 9.0.1 / built-in Kotlin 2.2.10.
+    implementation(platform("com.google.firebase:firebase-bom:34.0.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")

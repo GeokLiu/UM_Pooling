@@ -1,7 +1,7 @@
 # Firebase Analytics setup
 
 The root Gradle build declares Google services plugin 4.6.0 without applying it.
-The app module applies the plugin and imports Firebase BoM 35.2.0 plus the
+The app module applies the plugin and imports Firebase BoM 34.0.0 plus the
 versionless `firebase-analytics` dependency. The BoM selects compatible Firebase
 SDK versions. Supabase remains the app's authentication and database backend.
 
@@ -34,8 +34,21 @@ SDK versions. Supabase remains the app's authentication and database backend.
 
 ## Verification status
 
-The requested plugin and BoM versions were verified in Google's Maven repository.
-The BoM includes Firebase Analytics (24.0.0). Static checks verified the Gradle
+The original requested BoM 35.2.0 resolves Analytics 24.0.0. The device build log
+reported that its measurement libraries have Kotlin metadata 2.4.0, incompatible
+with this project's Kotlin 2.2 compiler; D8 also warned about metadata rewriting.
+The compatible BoM 34.0.0 is now pinned. Google Maven confirms Analytics 23.0.0
+and Messaging 25.0.0 under that BoM. The downloaded measurement-impl 23.0.0 AAR's
+Kotlin module headers were checked and report metadata 2.1.0. Compose and
+serialization compiler plugin versions are both aligned to AGP 9.0.1's built-in
+Kotlin 2.2.10 using the same catalog version key.
+
+After pulling the fix, sync Gradle and rebuild. Do not add
+-Xskip-metadata-version-check; it hides the compatibility check instead of
+selecting compatible libraries. The full Android build still needs verification
+on the configured local Android SDK/device.
+
+The Google services plugin and BoM artifacts were verified in Google's Maven repository. Static checks verified the Gradle
 entries, package name, and ignore rule. No google-services.json was supplied to
 this environment, so Firebase configuration and event delivery are unverified.
 Build/unit test execution is also blocked by the environment's Gradle distribution

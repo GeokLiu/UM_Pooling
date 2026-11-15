@@ -6,14 +6,13 @@ junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.8.0"
-kotlin = "2.0.21"
+# Match AGP 9.0.1 built-in Kotlin for both compiler plugins.
+kotlin = "2.2.10"
 composeBom = "2024.09.00"
 
 supabase = "3.0.1"
 ktor = "3.0.1"
 kotlinxSerialization = "1.7.3"
-# AGP 9.0.1 uses built-in Kotlin 2.2.10. Serialization must match it.
-kotlinSerializationPlugin = "2.2.10"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -46,4 +45,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
 
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinSerializationPlugin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
