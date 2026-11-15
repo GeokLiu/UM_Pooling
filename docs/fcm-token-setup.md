@@ -33,7 +33,7 @@ background. There is no offline retry queue.
   update that affects no visible profile. No database schema/policy changes have
   been applied by this code change.
 - Retain local Supabase configuration and `app/google-services.json` as described
-  in database-integration.md and firebase-setup.md.
+  in database-integration.md. `app/google-services.json` is optional for building; without it push is not configured.
 
 ## Verification on a device
 
