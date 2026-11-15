@@ -1,76 +1,74 @@
 package com.fopgang.umpooling.data.repository
 
 import com.fopgang.umpooling.SupabaseClientProvider
+import com.fopgang.umpooling.data.NewRideRequest
+import com.fopgang.umpooling.data.NewTripOffer
+import com.fopgang.umpooling.data.OfferStatus
 import com.fopgang.umpooling.data.RideRequest
 import com.fopgang.umpooling.data.TripOffer
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class RideRepository {
 
-    // 1. Post a new Trip Offer (Enforces fuel share cap <= RM 10.00)
-    suspend fun createTripOffer(offer: TripOffer): Result<TripOffer> {
-        return try {
-            if (offer.costPerSeat > 10.00) {
-                return Result.failure(Exception("Fuel share cost cannot exceed RM 10.00 limit."))
-            }
-            val createdOffer = SupabaseClientProvider.client.postgrest["trip_offers"]
-                .insert(offer) {
-                    select()
-                }.decodeSingle<TripOffer>()
-
-            Result.success(createdOffer)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    // 1. Post a new trip offer. The cost-share cap is enforced by the database (FR3.1),
+    // so a modified client cannot bypass it; a violation comes back as a failure.
+    suspend fun createTripOffer(offer: NewTripOffer): Result<TripOffer> = suspendRunCatching {
+        SupabaseClientProvider.client.postgrest["trip_offers"]
+            .insert(offer) { select() }
+            .decodeSingle<TripOffer>()
     }
 
-    // 2. Fetch all open trip offers
-    suspend fun getOpenTripOffers(): Result<List<TripOffer>> {
-        return try {
-            val offers = SupabaseClientProvider.client.postgrest["trip_offers"]
-                .select(Columns.ALL) {
-                    filter {
-                        eq("status", "open")
-                        gt("availableSeat", 0)
-                    }
-                }.decodeList<TripOffer>()
-
-            Result.success(offers)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    // 3. Request a ride on an open offer
-    suspend fun requestRide(requestId: String, userId: String, tripOfferId: String): Result<RideRequest> {
-        return try {
-            val newRequest = RideRequest(
-                userId = userId,
-                tripOfferId = tripOfferId,
-                status = "pending"
-            )
-            val insertedRequest = SupabaseClientProvider.client.postgrest["ride_requests"]
-                .insert(newRequest) {
-                    select()
-                }.decodeSingle<RideRequest>()
-
-            Result.success(insertedRequest)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    // 4. Update request status (e.g., Driver accepts/rejects)
-    suspend fun updateRequestStatus(requestId: String, status: String): Result<Unit> {
-        return try {
-            SupabaseClientProvider.client.postgrest["ride_requests"]
-                .update({ set("status", status) }) {
-                    filter { eq("requestId", requestId) }
+    // 2. Fetch all open trip offers that still have seats
+    suspend fun getOpenTripOffers(): Result<List<TripOffer>> = suspendRunCatching {
+        SupabaseClientProvider.client.postgrest["trip_offers"]
+            .select(Columns.ALL) {
+                filter {
+                    eq("status", OfferStatus.OPEN)
+                    gt("available_seats", 0)
                 }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+            }.decodeList<TripOffer>()
+    }
+
+    // 3. Reserve seats through the database function, which locks the offer row so two
+    // passengers cannot take the same seat (FR3.2). Returns the new booking id.
+    suspend fun bookSeat(
+        tripOfferId: String,
+        seats: Int,
+        pickupLng: Double,
+        pickupLat: Double
+    ): Result<String> = suspendRunCatching {
+        val client = SupabaseClientProvider.client
+        val passengerId = client.auth.currentUserOrNull()?.id
+            ?: throw IllegalStateException("Sign in before booking.")
+        client.postgrest.rpc(
+            "book_seat_transaction",
+            buildJsonObject {
+                put("p_trip_offer_id", tripOfferId)
+                put("p_passenger_id", passengerId)
+                put("p_seats", seats)
+                put("p_pickup_lng", pickupLng)
+                put("p_pickup_lat", pickupLat)
+            }
+        ).decodeAs<String>()
+    }
+
+    // 4. Post a ride request. It has no offer yet; drivers on overlapping routes are notified (FR2.2).
+    suspend fun createRideRequest(request: NewRideRequest): Result<RideRequest> = suspendRunCatching {
+        SupabaseClientProvider.client.postgrest["ride_requests"]
+            .insert(request) { select() }
+            .decodeSingle<RideRequest>()
+    }
+
+    // 5. Update request status (e.g., driver accepts/rejects)
+    suspend fun updateRequestStatus(requestId: String, status: String): Result<Unit> = suspendRunCatching {
+        SupabaseClientProvider.client.postgrest["ride_requests"]
+            .update({ set("status", status) }) {
+                filter { eq("request_id", requestId) }
+            }
+        Unit
     }
 }
