@@ -71,10 +71,11 @@ revoke update ("usersId", "usersEmail", "usersRole", "vehiclePlate", "vehicleMod
     fuel_category, trust_rating, emergency_contact, fcm_token)
     on public.users from public, anon, authenticated;
 grant select on public.users to authenticated;
-grant update ("usersRole", "vehiclePlate", "vehicleModel", faculty,
+grant update ("vehiclePlate", "vehicleModel", faculty,
     residential_area, residential_college, vehicle_type, fuel_category,
     emergency_contact, fcm_token) on public.users to authenticated;
--- usersRole represents commuter role, never an administrator/staff privilege.
+-- usersRole is NOT client-writable: a user could otherwise make themselves staffAnalyst.
+-- Commuter role changes go through public.set_my_role() in 20261115000005_role_profile_cost_cap.sql.
 
 alter table public.bookings enable row level security;
 alter table public.trips enable row level security;

@@ -1,8 +1,25 @@
-# Reviewed Supabase SQL — current database, not a fresh install
+# Supabase: database, functions and migrations
 
-These scripts replace the five supplied SQL snippets for the schema exported on
-2026-11-15. They are review files, outside the automatic `supabase/migrations`
-directory. Saving or pushing them does not execute them against Supabase.
+## Layout
+
+| Path | What it is |
+|---|---|
+| `migrations/` | SQL changes in order, named `<timestamp>_<name>.sql`. Add new changes here. |
+| `functions/swift-worker/` | The push notification Edge Function (dashboard name: send-push-notification). |
+| `checks/` | Read-only queries for inspecting the live project. They change nothing. |
+
+## Status
+
+- Migrations 1 to 6 are already applied to the live project. Migration 7 (trip lifecycle) is written but not applied; test it with `checks/01_trip_lifecycle_test.sql` (1 to 4 were applied from Member 2's
+  earlier copies, so the live version of migration 4 may differ from the file here: it still
+  grants `usersRole` updates; migration 5 removes that grant).
+- These files are written for the **existing** project. The base tables, enums and PostGIS were
+  created in the dashboard, so the migrations alone **cannot build an empty project**. Before
+  anyone relies on `supabase db reset`, create a baseline: `supabase db dump --schema public`
+  into a first migration, then mark migrations 1 to 6 as already applied with
+  `supabase migration repair --status applied <version>`.
+- Never save secrets in these files. The webhook secret lives in Supabase Vault and the
+  `WEBHOOK_SECRET` function secret.
 
 ## Why the original snippets conflict
 
@@ -44,15 +61,15 @@ Use a development/staging copy containing the exported tables, enum types and
 PostGIS objects in public. These files cannot initialise an empty project.
 Preserve a database backup. Do not paste all five old snippets again.
 
-1. Run `00_read_only_preflight.sql`. Inspect user_impact_stats columns, existing
+1. Run `checks/00_read_only_preflight.sql`. Inspect user_impact_stats columns, existing
    triggers and column grants. Stop for any schema drift, multiple profile
    triggers, or an existing trigger that also changes seat availability. Supabase
    SQL Editor may show only the last result set; run each SELECT separately and
    export each result when reviewing it.
-2. Run `01_existing_schema_additions.sql`. It preserves existing rows and uses
+2. Run `20261115000001_existing_schema_additions.sql`. It preserves existing rows and uses
    user_impact_stats with a foreign key to users("usersId"). It adds a college
    field and a trip vehicle snapshot, but does not populate historical values.
-3. Run `02_auth_profile_trigger.sql`. It preserves the trigger function name,
+3. Run `20261115000002_auth_profile_trigger.sql`. It preserves the trigger function name,
    creates an AFTER INSERT trigger and validates UM email domains. Test a new UM
    signup, rejected non-UM signup and expected phone-only rejection in staging.
    Email confirmation remains the responsibility of Supabase Auth settings.
@@ -61,13 +78,16 @@ Preserve a database backup. Do not paste all five old snippets again.
    trigger and preserves its unused function; only the UM-validated AFTER trigger
    remains. This does not alter the bookings notification webhook.
    Existing accounts missing profiles still need a separate audited backfill.
-4. Run `03_book_seat_transaction.sql`. It retains the five-argument RPC signature,
+4. Run `20261115000003_book_seat_transaction.sql`. It retains the five-argument RPC signature,
    checks auth.uid(), validates seats/coordinates and prevents self-booking,
    expired offers and insufficient capacity. Failed duplicate bookings roll back;
    retries return a duplicate error rather than returning the original ticket.
-5. Review the behaviour below, then run `04_access_controls.sql` in staging. It
+5. Review the behaviour below, then run `20261115000004_access_controls.sql` in staging. It
    aborts if unexpected policies are present on the key protected tables.
-6. Run all acceptance checks below before promoting the reviewed changes into
+6. Run `20261115000005_role_profile_cost_cap.sql`: usersRole becomes read-only for clients (role changes
+   go through `set_my_role`), adds `public_profiles` and a configurable cost-share cap
+   (default RM 5.00 in `app_config`). Not run yet.
+7. Run all acceptance checks below before promoting the reviewed changes into
    dated migrations and applying them to the shared project.
 
 Each edit file has its own BEGIN/COMMIT. If a statement fails, run ROLLBACK in
