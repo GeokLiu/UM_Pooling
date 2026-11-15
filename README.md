@@ -34,28 +34,48 @@ Requirements and the SDG 13.3 mapping: [docs/UMPooling.md](docs/UMPooling.md).
 
 ## Getting started
 
-Requirements: Android Studio, the Android SDK, and a device or emulator running Android 7.0 (API 24) or higher.
+Requirements: Android Studio, JDK 21, the Android SDK, and a device or emulator running Android 7.0 (API 24) or higher.
 
-1. Clone the repo:
+1. Clone the repo and set your own Git identity:
    ```
    git clone https://github.com/josephineding-2025/UMPooling.git
-   ```
-2. Set your own Git identity :
-   ```
    git config user.name "Your Name"
    git config user.email "your-email@siswa.um.edu.my"
    ```
-3. Open the folder in Android Studio and let Gradle sync. `local.properties` is created for you and is not committed.
-4. Run the `app` configuration on an emulator or device.
-5. Supabase and API keys: keys are NOT committed. Get `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the publishable key) from the team's private chat and add them to `local.properties`. The service-role (secret) key must never go in the app or the repository; it is only for server-side use. If push notifications use FCM, `google-services.json` is also kept private and placed in `app/`.
+2. Open the folder in Android Studio and let Gradle sync. `local.properties` is created for you and is never committed.
+3. Add the project keys to `local.properties` (ask the team's private chat for the values):
+   ```
+   SUPABASE_URL=https://<project>.supabase.co
+   SUPABASE_ANON_KEY=<the publishable key, starts with sb_publishable_>
+   ```
+   Use only the publishable key. The secret / service-role key must never go in the app or the repository.
+4. Run the `app` configuration on an emulator or device. The app builds without `google-services.json`; that file is only needed for push notifications, is kept private, and goes in `app/`.
+5. Before opening a pull request, run `bash gradlew :app:assembleDebug :app:testDebugUnitTest`. It must pass.
+
+## Backend (Supabase)
+
+The backend is a Supabase project (Auth, Postgres with Row Level Security, an Edge Function for push). Read these before you touch data or backend code:
+
+| Read this | When |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | How the app, Supabase, the Edge Function and Firebase push fit together |
+| [docs/schema.md](docs/schema.md) | Table and column names, enum labels (case matters), functions, who can read or write what, the trip lifecycle |
+| [docs/conventions.md](docs/conventions.md) | Naming, secrets, tests and how to write database changes |
+| [supabase/README.md](supabase/README.md) | The migrations, the Edge Function, how to apply and test them |
+
+Rules in short: change the database only with a new file in `supabase/migrations/` reviewed by Member 2, send enum labels exactly as written in `docs/schema.md`, and never commit secrets. Trip start, confirm, complete and cancel are database functions; the test for them is `supabase/checks/01_trip_lifecycle_test.sql`.
 
 ## Repository structure
 
 ```
 UMPooling/
   app/                  Android app module (Kotlin, Jetpack Compose)
+  supabase/
+    migrations/         Database changes in order
+    functions/          Edge Functions (push notifications)
+    checks/             Read-only queries and tests for the live project
   gradle/               Gradle wrapper and version catalog (libs.versions.toml)
-  docs/                 Team documents and ideas 
+  docs/                 Team documents (architecture, schema, conventions, design, requirements)
   evidence/             Survey exports, UM unit emails, screenshots, test results
   .github/              Pull request template
   AI_Usage_Log.md       AI usage log
