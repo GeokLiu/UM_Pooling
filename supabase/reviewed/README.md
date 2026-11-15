@@ -56,6 +56,10 @@ Preserve a database backup. Do not paste all five old snippets again.
    creates an AFTER INSERT trigger and validates UM email domains. Test a new UM
    signup, rejected non-UM signup and expected phone-only rejection in staging.
    Email confirmation remains the responsibility of Supabase Auth settings.
+   The later trigger export confirms on_auth_user_created also called
+   handle_new_user() to create the same profile. Script 02 removes that duplicate
+   trigger and preserves its unused function; only the UM-validated AFTER trigger
+   remains. This does not alter the bookings notification webhook.
    Existing accounts missing profiles still need a separate audited backfill.
 4. Run `03_book_seat_transaction.sql`. It retains the five-argument RPC signature,
    checks auth.uid(), validates seats/coordinates and prevents self-booking,

@@ -28,6 +28,8 @@ This log is a mandatory appendix of the final report (Appendix D). Keep it in th
 
 | 6 | 2026-11-15 | Account: GeokLiu (member to confirm) | OpenAI Codex | Prompt opening (verbatim): do you want to see all my queries and eddit them? Full input: five SQL snippets in the conversation, including attached Pasted text.txt (BEGIN; helper block). | Reviewed SQL replacement candidates and execution/test guide under supabase/reviewed. | Preserved current user names/data, corrected AFTER Auth trigger and authenticated booking RPC, added staged access controls and read-only preflight. No live database commands executed. | Parsed all five SQL files with pglast; parsed both PL/pgSQL function bodies; compared with supplied columns/constraints/policies and ran git diff --check. Supabase execution, signup, grants/RLS, concurrency and app/webhook integration NOT YET VERIFIED; remaining work documented. |
 
+| 7 | 2026-11-15 | Account: GeokLiu (member to confirm) | OpenAI Codex | Supplied definitions of public.handle_new_um_user and public.handle_new_user, both inserting the same profile; full SQL input in this conversation. | Confirmed duplicate signup triggers and corrected reviewed script 02. | Removed the duplicate on_auth_user_created trigger in the review script, retaining one UM-validated AFTER INSERT trigger and preserving the old function. | PostgreSQL and PL/pgSQL syntax parsed; git diff --check passed. Live application and signup tests NOT YET VERIFIED. |
+
 ## Notes on authorship (fill in honestly)
 
 - **Origin of the idea:** [Describe who in the team proposed UMPooling and why, e.g. from personal experience with "sapu" rides. This shows the idea and problem choice are the team's own.]

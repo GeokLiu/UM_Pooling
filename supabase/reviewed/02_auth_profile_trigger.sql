@@ -26,6 +26,9 @@ $function$;
 
 -- AFTER ensures the referenced auth.users row exists before creating its profile.
 -- An exception still rolls back the Auth insert and profile together.
+-- Export confirms this second trigger calls handle_new_user() and also creates
+-- the same profile. Remove the trigger, but preserve its function for audit.
+drop trigger if exists on_auth_user_created on auth.users;
 drop trigger if exists enforce_email_domain on auth.users;
 drop trigger if exists on_auth_user_created_um on auth.users;
 create trigger on_auth_user_created_um
