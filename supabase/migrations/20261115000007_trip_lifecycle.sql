@@ -1,5 +1,6 @@
 -- Trip lifecycle: start, passenger confirmation, completion, cancellation.
--- NOT applied to any database yet. Test with supabase/checks/01_trip_lifecycle_test.sql first.
+-- Not applied to the shared database. Apply in staging, then run
+-- supabase/checks/01_trip_lifecycle_test.sql.
 --
 -- Flow
 --   1. Passengers book an offer (book_seat_transaction): booking status 'confirmed', trip_id empty.
@@ -15,6 +16,14 @@
 -- Only these functions change trips, and clients cannot write the tables directly (migration 4).
 -- Counting rules (distance, daily cap) belong to the CO2 trigger, not here.
 begin;
+
+-- Migration 4 allowed drivers to edit status directly. That could reopen an
+-- in-progress offer and accept bookings with no trip_id. Only lifecycle RPCs
+-- may change status; keep both table-level and legacy column-level grants closed.
+revoke update on public.trip_offers from public, anon, authenticated;
+revoke update (status, available_seats) on public.trip_offers from public, anon, authenticated;
+grant update (origin_geo, destination_geo, cost_per_seat, departure_time,
+    origin_zone, destination_zone, distance_km) on public.trip_offers to authenticated;
 
 create or replace function public.start_trip(p_trip_offer_id uuid)
 returns uuid

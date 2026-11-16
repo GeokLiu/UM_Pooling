@@ -6,7 +6,7 @@
 |---|---|
 | `migrations/` | SQL changes in order, named `<timestamp>_<name>.sql`. Add new changes here. |
 | `functions/swift-worker/` | The push notification Edge Function (dashboard name: send-push-notification). |
-| `checks/` | Read-only queries for inspecting the live project. They change nothing. |
+| `checks/` | Read-only inspection queries and explicitly labelled rollback-based staging tests. |
 
 ## Status
 
@@ -20,6 +20,33 @@
   `supabase migration repair --status applied <version>`.
 - Never save secrets in these files. The webhook secret lives in Supabase Vault and the
   `WEBHOOK_SECRET` function secret.
+
+## PR #5 lifecycle fix and staging verification
+
+Migration 7 revokes direct client UPDATE of offer status (including old column
+and table grants), while preserving ordinary driver edits. Lifecycle functions
+run with their trusted owner's privileges and remain the only client route to
+change offer status. This closes the reopen-after-start booking bypass.
+
+Apply migration 7 only to a development/staging copy with the existing schema
+and migrations 1–6 already present. Then run `checks/01_trip_lifecycle_test.sql`.
+That test intentionally finishes with the exception
+`TRIP LIFECYCLE TESTS PASSED (rolled back)`: this exact message means the test
+passed and its database changes rolled back. Any other error is a failure.
+
+The expanded test covers completion, direct reopen attempts on active/completed/
+cancelled offers, bookings after start, safe driver field edits, outsider/passenger
+permission failures, cancellation of both confirmed and end-confirmed bookings,
+repeat cancellation, and confirmation after cancellation.
+
+Cancellation here means the driver cancels an **in-progress entire trip**. The
+offer remains terminally cancelled; its seats are not reopened for sale. Passenger
+booking cancellation with exactly-once seat restoration and pre-start offer
+cancellation remain separate work. Do not describe this test as covering those
+unimplemented flows.
+
+Use another teammate's review plus actual staging results before approving the
+PR. No SQL in this repository is applied to the shared Supabase by a Git push.
 
 ## Why the original snippets conflict
 
