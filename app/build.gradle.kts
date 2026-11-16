@@ -1,10 +1,15 @@
 import java.util.Properties
 
 plugins {
-    id("com.google.gms.google-services")
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+}
+
+// google-services.json is private and not committed. Without it the app still builds
+// and runs; push notifications (FCM) simply stay unconfigured.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 val localProperties = Properties().apply {
@@ -63,10 +68,9 @@ android {
 }
 
 dependencies {
-    // Analytics 24.0.0 in BoM 35.2.0 requires Kotlin 2.4 metadata support.
-    // Pin the compatible SDK set while using AGP 9.0.1 / built-in Kotlin 2.2.10.
+    // BoM 34.0.0 is compatible with AGP 9.0.1 / built-in Kotlin 2.2.10 (newer BoMs need Kotlin 2.4 metadata).
+    // Only Cloud Messaging is used. Analytics is not included (NFR2: minimum data).
     implementation(platform("com.google.firebase:firebase-bom:34.0.0"))
-    implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 

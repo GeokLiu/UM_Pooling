@@ -1,35 +1,29 @@
 package com.fopgang.umpooling.data.repository
 
 import com.fopgang.umpooling.SupabaseClientProvider
+import com.fopgang.umpooling.data.UmEmail
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 
 class AuthRepository {
 
+    // The database repeats this check in a trigger; this one gives an early, clear error.
     suspend fun signUpUMUser(email: String, pass: String): Result<Unit> {
-        return try {
-            if (!email.endsWith("@siswa.um.edu.my") && !email.endsWith("@um.edu.my")) {
-                return Result.failure(Exception("Registration is restricted to UM email addresses."))
-            }
+        if (!UmEmail.isValid(email)) {
+            return Result.failure(IllegalArgumentException("Registration is restricted to UM email addresses."))
+        }
+        return suspendRunCatching {
             SupabaseClientProvider.client.auth.signUpWith(Email) {
-                this.email = email
+                this.email = UmEmail.normalize(email)
                 this.password = pass
             }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
-    suspend fun signInUser(email: String, pass: String): Result<Unit> {
-        return try {
-            SupabaseClientProvider.client.auth.signInWith(Email) {
-                this.email = email
-                this.password = pass
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
+    suspend fun signInUser(email: String, pass: String): Result<Unit> = suspendRunCatching {
+        SupabaseClientProvider.client.auth.signInWith(Email) {
+            this.email = UmEmail.normalize(email)
+            this.password = pass
         }
     }
 }
