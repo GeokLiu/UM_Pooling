@@ -30,7 +30,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,13 +42,18 @@ import androidx.compose.ui.unit.dp
 import com.fopgang.umpooling.SupabaseClientProvider
 import com.fopgang.umpooling.data.CampusLocation
 import com.fopgang.umpooling.data.GeoPoint
+import com.fopgang.umpooling.data.Haversine
 import com.fopgang.umpooling.data.NewTripOffer
 import com.fopgang.umpooling.data.repository.RideRepository
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 /**
  * Screen for drivers to post a ride offer (FR2.1 / FR3.1).
+ * Enforces RM 5.00 cost cap, ISO-8601 (+08:00) timestamptz format,
+ * Haversine x 1.3 road distance estimation, and blocks unpinned locations.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,10 +66,32 @@ fun PostOfferScreen(
 
     var originLocation by remember { mutableStateOf<CampusLocation?>(null) }
     var destinationLocation by remember { mutableStateOf<CampusLocation?>(null) }
+    
+    // Default to today's date in Malaysia timezone
+    val defaultDate = remember { LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE) }
+    var departureDate by remember { mutableStateOf(defaultDate) }
     var departureTime by remember { mutableStateOf("08:15") }
+    
     var seats by remember { mutableIntStateOf(3) }
     var costInput by remember { mutableStateOf("3.00") }
     var isPosting by remember { mutableStateOf(false) }
+
+    // Validation checks
+    val orig = originLocation
+    val dest = destinationLocation
+    val hasValidCoordinates = orig?.lat != null && orig.lng != null && dest?.lat != null && dest.lng != null
+    val unpinnedLocation = when {
+        orig != null && (orig.lat == null || orig.lng == null) -> orig.name
+        dest != null && (dest.lat == null || dest.lng == null) -> dest.name
+        else -> null
+    }
+
+    // Dynamic distance calculation using Haversine x 1.3
+    val estimatedDistanceKm = remember(orig, dest) {
+        if (hasValidCoordinates && orig?.lat != null && orig.lng != null && dest?.lat != null && dest.lng != null) {
+            Haversine.estimateRoadDistanceKm(orig.lat, orig.lng, dest.lat, dest.lng)
+        } else null
+    }
 
     Scaffold(
         topBar = {
@@ -110,15 +136,46 @@ fun PostOfferScreen(
                         onLocationSelected = { destinationLocation = it }
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    if (unpinnedLocation != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "⚠️ '$unpinnedLocation' has no fixed GPS coordinates. Please select a defined campus zone or college.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
 
-                    OutlinedTextField(
-                        value = departureTime,
-                        onValueChange = { departureTime = it },
-                        label = { Text("Departure Time (e.g. 08:15)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (estimatedDistanceKm != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Estimated road distance: $estimatedDistanceKm km (Haversine × 1.3)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = departureDate,
+                            onValueChange = { departureDate = it },
+                            label = { Text("Date (YYYY-MM-DD)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1.2f)
+                        )
+
+                        OutlinedTextField(
+                            value = departureTime,
+                            onValueChange = { departureTime = it },
+                            label = { Text("Time (HH:MM)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(0.8f)
+                        )
+                    }
                 }
             }
 
@@ -165,7 +222,7 @@ fun PostOfferScreen(
                         value = costInput,
                         onValueChange = { costInput = it },
                         label = { Text("Cost Share Per Seat (RM)") },
-                        supportingText = { Text("Capped at RM 5.00 for non-profit cost sharing") },
+                        supportingText = { Text("Maximum RM 5.00 per seat (UM policy cap)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -182,33 +239,41 @@ fun PostOfferScreen(
                         }
                         return@Button
                     }
-                    val orig = originLocation
-                    val dest = destinationLocation
                     if (orig == null || dest == null) {
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar("Please pick both origin and destination.")
                         }
                         return@Button
                     }
-                    val parsedCost = costInput.toDoubleOrNull()
-                    if (parsedCost == null || parsedCost < 0.0 || parsedCost > 10.0) {
+                    if (!hasValidCoordinates) {
                         coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Cost must be between RM 0 and RM 10.")
+                            snackbarHostState.showSnackbar("Cannot post: location lacks verified GPS coordinates.")
                         }
                         return@Button
                     }
+                    val parsedCost = costInput.toDoubleOrNull()
+                    if (parsedCost == null || parsedCost < 0.0 || parsedCost > 5.0) {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Cost share must be between RM 0.00 and RM 5.00.")
+                        }
+                        return@Button
+                    }
+
+                    // Format ISO-8601 timestamptz with Malaysia timezone +08:00
+                    val isoTimestamp = "${departureDate.trim()}T${departureTime.trim()}:00+08:00"
 
                     isPosting = true
                     coroutineScope.launch {
                         val offer = NewTripOffer(
                             driverId = user.id,
-                            originGeo = orig.ewkt ?: GeoPoint.ewkt(101.6505, 3.1280),
-                            destinationGeo = dest.ewkt ?: GeoPoint.ewkt(101.6505, 3.1280),
+                            originGeo = orig.ewkt!!,
+                            destinationGeo = dest.ewkt!!,
                             costPerSeat = parsedCost,
                             availableSeats = seats,
-                            departureTime = departureTime,
+                            departureTime = isoTimestamp,
                             originZone = orig.id,
-                            destinationZone = dest.id
+                            destinationZone = dest.id,
+                            distanceKm = estimatedDistanceKm
                         )
 
                         repository.createTripOffer(offer).fold(
@@ -224,7 +289,7 @@ fun PostOfferScreen(
                         )
                     }
                 },
-                enabled = !isPosting && originLocation != null && destinationLocation != null,
+                enabled = !isPosting && hasValidCoordinates,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)

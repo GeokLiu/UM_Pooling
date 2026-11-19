@@ -48,6 +48,7 @@ import com.fopgang.umpooling.SupabaseClientProvider
 import com.fopgang.umpooling.data.CampusLocation
 import com.fopgang.umpooling.data.CampusLocationProvider
 import com.fopgang.umpooling.data.GeoPoint
+import com.fopgang.umpooling.data.Haversine
 import com.fopgang.umpooling.data.NewSavedRoute
 import com.fopgang.umpooling.data.SavedRoute
 import com.fopgang.umpooling.data.repository.RideRepository
@@ -173,15 +174,24 @@ fun SavedRoutesScreen(
                                     }
                                     return@Button
                                 }
+                                if (orig.lat == null || orig.lng == null || dest.lat == null || dest.lng == null) {
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Cannot save route: location lacks verified GPS coordinates.")
+                                    }
+                                    return@Button
+                                }
+
+                                val distanceKm = Haversine.estimateRoadDistanceKm(orig.lat, orig.lng, dest.lat, dest.lng)
 
                                 isSaving = true
                                 coroutineScope.launch {
                                     val newRoute = NewSavedRoute(
                                         userId = user.id,
-                                        originGeo = orig.ewkt ?: GeoPoint.ewkt(101.6505, 3.1280),
-                                        destinationGeo = dest.ewkt ?: GeoPoint.ewkt(101.6505, 3.1280),
+                                        originGeo = orig.ewkt!!,
+                                        destinationGeo = dest.ewkt!!,
                                         originZone = orig.id,
                                         destinationZone = dest.id,
+                                        distanceKm = distanceKm,
                                         preferredTime = preferredTime
                                     )
                                     repository.createSavedRoute(newRoute).fold(

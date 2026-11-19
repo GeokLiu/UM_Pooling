@@ -2,6 +2,7 @@ package com.fopgang.umpooling.ui.matching
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,9 +41,12 @@ import com.fopgang.umpooling.data.NewRideRequest
 import com.fopgang.umpooling.data.repository.RideRepository
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 /**
  * Screen for passengers to post a ride request (FR2.1 / FR2.2).
+ * Formats preferred_time as ISO-8601 (+08:00) timestamptz and verifies GPS coordinates.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,8 +59,20 @@ fun PostRequestScreen(
 
     var pickupLocation by remember { mutableStateOf<CampusLocation?>(null) }
     var destinationLocation by remember { mutableStateOf<CampusLocation?>(null) }
+
+    val defaultDate = remember { LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE) }
+    var preferredDate by remember { mutableStateOf(defaultDate) }
     var preferredTime by remember { mutableStateOf("08:15") }
     var isPosting by remember { mutableStateOf(false) }
+
+    val pick = pickupLocation
+    val dest = destinationLocation
+    val hasValidCoordinates = pick?.lat != null && pick.lng != null && dest?.lat != null && dest.lng != null
+    val unpinnedLocation = when {
+        pick != null && (pick.lat == null || pick.lng == null) -> pick.name
+        dest != null && (dest.lat == null || dest.lng == null) -> dest.name
+        else -> null
+    }
 
     Scaffold(
         topBar = {
@@ -107,15 +123,37 @@ fun PostRequestScreen(
                         onLocationSelected = { destinationLocation = it }
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    if (unpinnedLocation != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "⚠️ '$unpinnedLocation' has no fixed GPS coordinates. Please select a defined campus zone or college.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
 
-                    OutlinedTextField(
-                        value = preferredTime,
-                        onValueChange = { preferredTime = it },
-                        label = { Text("Desired Departure Time (e.g. 08:15)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = preferredDate,
+                            onValueChange = { preferredDate = it },
+                            label = { Text("Date (YYYY-MM-DD)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1.2f)
+                        )
+
+                        OutlinedTextField(
+                            value = preferredTime,
+                            onValueChange = { preferredTime = it },
+                            label = { Text("Time (HH:MM)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(0.8f)
+                        )
+                    }
                 }
             }
 
@@ -128,22 +166,28 @@ fun PostRequestScreen(
                         }
                         return@Button
                     }
-                    val pick = pickupLocation
-                    val dest = destinationLocation
                     if (pick == null || dest == null) {
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar("Please select both pickup and destination.")
                         }
                         return@Button
                     }
+                    if (!hasValidCoordinates) {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Cannot request: location lacks verified GPS coordinates.")
+                        }
+                        return@Button
+                    }
+
+                    val isoTimestamp = "${preferredDate.trim()}T${preferredTime.trim()}:00+08:00"
 
                     isPosting = true
                     coroutineScope.launch {
                         val request = NewRideRequest(
                             userId = user.id,
-                            pickupGeo = pick.pickupEwkt ?: GeoPoint.ewkt(101.6505, 3.1280),
-                            destinationGeo = dest.ewkt ?: GeoPoint.ewkt(101.6505, 3.1280),
-                            preferredTime = preferredTime
+                            pickupGeo = pick.pickupEwkt!!,
+                            destinationGeo = dest.ewkt!!,
+                            preferredTime = isoTimestamp
                         )
 
                         repository.createRideRequest(request).fold(
@@ -159,7 +203,7 @@ fun PostRequestScreen(
                         )
                     }
                 },
-                enabled = !isPosting && pickupLocation != null && destinationLocation != null,
+                enabled = !isPosting && hasValidCoordinates,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
