@@ -218,7 +218,7 @@ fun MapPickerScreen(
                                 <body>
                                     <div id="map"></div>
                                     <script>
-                                        var map = L.map('map', { zoomControl: true }).setView([$initLat, $initLng], 15);
+                                        var map = L.map('map', { zoomControl: true }).setView([$initLat, $initLng], 14.5);
                                         
                                         // Standard High-Resolution OpenStreetMap Tiles (100% Free)
                                         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -246,6 +246,7 @@ fun MapPickerScreen(
                                             }).addTo(map);
 
                                             marker.bindPopup('<b>' + loc.name + '</b><br><small>' + loc.category + '</small>');
+                                            marker.bindTooltip(loc.name, { direction: 'top', offset: [0, -8] });
                                             marker.on('click', function() {
                                                 if (window.AndroidMapBridge) {
                                                     window.AndroidMapBridge.onLocationSelected(loc.id, loc.name, loc.category, loc.lat, loc.lng);
