@@ -67,6 +67,9 @@ import com.fopgang.umpooling.data.CampusLocationProvider
 import com.fopgang.umpooling.data.Haversine
 import kotlin.math.roundToInt
 
+import androidx.compose.ui.tooling.preview.Preview
+import com.fopgang.umpooling.ui.theme.UMPoolingTheme
+
 // UM Campus Reference Center: FSKTM / Central Campus
 private const val UM_CENTER_LAT = 3.1209
 private const val UM_CENTER_LNG = 101.6538
@@ -446,5 +449,16 @@ fun MapPickerDialog(
                 onDismiss = onDismiss
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MapPickerScreenPreview() {
+    UMPoolingTheme {
+        MapPickerScreen(
+            onLocationConfirmed = {},
+            onDismiss = {}
+        )
     }
 }
