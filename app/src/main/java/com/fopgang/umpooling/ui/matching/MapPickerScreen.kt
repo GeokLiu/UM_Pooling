@@ -1,10 +1,14 @@
 package com.fopgang.umpooling.ui.matching
 
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.view.ViewGroup
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,25 +23,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -45,7 +44,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,35 +52,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.fopgang.umpooling.data.CampusLocation
 import com.fopgang.umpooling.data.CampusLocationProvider
 import com.fopgang.umpooling.data.Haversine
+import com.fopgang.umpooling.ui.theme.UMPoolingTheme
 import kotlin.math.roundToInt
 
-import androidx.compose.ui.tooling.preview.Preview
-import com.fopgang.umpooling.ui.theme.UMPoolingTheme
-
-// UM Campus Reference Center: FSKTM / Central Campus
 private const val UM_CENTER_LAT = 3.1209
 private const val UM_CENTER_LNG = 101.6538
 
-// GPS to Canvas Scale: ~1 degree latitude is ~111 km
-// At UM latitude, 0.01 deg lat/lng is ~1.1 km
-private const val DEFAULT_SCALE = 38000f
-
 /**
- * Interactive Campus Map Picker (FR2.1 / FR2.2).
- * Enables visual location selection across UM campus landmarks & off-campus survey hotspots,
- * as well as custom GPS pin drops for commuter zones lacking predefined centroids.
+ * Real-world Interactive Map Picker powered by OpenStreetMap (OSM) & Leaflet.
+ * 100% Free, requires zero API keys, renders real street maps, campus buildings,
+ * and allows dropping custom pins for commuter pickup points.
  */
+@SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapPickerScreen(
@@ -90,17 +82,13 @@ fun MapPickerScreen(
     onLocationConfirmed: (CampusLocation) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // Current map center coordinates
-    var centerLat by remember { mutableDoubleStateOf(initialLocation?.lat ?: UM_CENTER_LAT) }
-    var centerLng by remember { mutableDoubleStateOf(initialLocation?.lng ?: UM_CENTER_LNG) }
-    var scale by remember { mutableFloatStateOf(DEFAULT_SCALE) }
-
-    // Selected Pin state
+    val isPreview = LocalInspectionMode.current
     var selectedLat by remember { mutableDoubleStateOf(initialLocation?.lat ?: UM_CENTER_LAT) }
     var selectedLng by remember { mutableDoubleStateOf(initialLocation?.lng ?: UM_CENTER_LNG) }
     var selectedName by remember { mutableStateOf(initialLocation?.name ?: "UM Campus Center") }
     var selectedCategory by remember { mutableStateOf(initialLocation?.category ?: "Campus Landmark") }
     var isCustomPin by remember { mutableStateOf(initialLocation?.id?.startsWith("custom_") == true) }
+    var isMapLoading by remember { mutableStateOf(true) }
 
     // Find nearest landmark to currently selected pin
     val nearestLandmark = remember(selectedLat, selectedLng) {
@@ -124,7 +112,7 @@ fun MapPickerScreen(
                     Column {
                         Text("Pick Location on Map", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Tap landmark or tap map to drop custom pin",
+                            "OpenStreetMap • Tap landmark or drop custom pin",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -132,7 +120,7 @@ fun MapPickerScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -145,193 +133,166 @@ fun MapPickerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color(0xFFF7F2EC))
+                .background(Color(0xFFF5F3EF))
         ) {
-            // Interactive Map Canvas with Pan & Tap Gestures
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            // Convert screen drag (pixels) to lat/lng delta
-                            val dLat = (dragAmount.y / scale).toDouble()
-                            val dLng = (-dragAmount.x / (scale * 1.05f)).toDouble()
-                            centerLat += dLat
-                            centerLng += dLng
-                        }
-                    }
-                    .pointerInput(Unit) {
-                        detectTapGestures { tapOffset ->
-                            // Calculate clicked GPS coordinate from canvas center
-                            val width = size.width
-                            val height = size.height
-                            val clickedLng = centerLng + ((tapOffset.x - width / 2f) / (scale * 1.05f))
-                            val clickedLat = centerLat - ((tapOffset.y - height / 2f) / scale)
-
-                            // Check if tapped near any known landmark (within 30 px)
-                            val tappedPreset = CampusLocationProvider.allLocations.firstOrNull { loc ->
-                                if (loc.lat == null || loc.lng == null) return@firstOrNull false
-                                val locX = width / 2f + ((loc.lng - centerLng) * scale * 1.05f).toFloat()
-                                val locY = height / 2f - ((loc.lat - centerLat) * scale).toFloat()
-                                val dx = tapOffset.x - locX
-                                val dy = tapOffset.y - locY
-                                (dx * dx + dy * dy) < 900f // 30 px radius
-                            }
-
-                            if (tappedPreset != null) {
-                                selectedLat = tappedPreset.lat!!
-                                selectedLng = tappedPreset.lng!!
-                                selectedName = tappedPreset.name
-                                selectedCategory = tappedPreset.category
-                                isCustomPin = false
-                            } else {
-                                selectedLat = clickedLat
-                                selectedLng = clickedLng
-                                selectedName = "Custom Pin (${String.format("%.4f", clickedLat)}, ${String.format("%.4f", clickedLng)})"
-                                selectedCategory = "Custom Location"
-                                isCustomPin = true
-                            }
-                        }
-                    }
-            ) {
-                val canvasWidth = size.width
-                val canvasHeight = size.height
-                val centerX = canvasWidth / 2f
-                val centerY = canvasHeight / 2f
-
-                // 1. Draw subtle campus grid lines
-                val gridSpacing = 80f
-                for (x in 0..(canvasWidth / gridSpacing).toInt()) {
-                    drawLine(
-                        color = Color(0xFFE2DDD7),
-                        start = Offset(x * gridSpacing, 0f),
-                        end = Offset(x * gridSpacing, canvasHeight),
-                        strokeWidth = 1f
-                    )
+            if (isPreview) {
+                // Static visual mock for Android Studio Compose Preview
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawRect(color = Color(0xFFE8ECE9))
+                    drawCircle(color = Color(0xFFF08F76), radius = 18f, center = Offset(size.width / 2f, size.height / 2f))
                 }
-                for (y in 0..(canvasHeight / gridSpacing).toInt()) {
-                    drawLine(
-                        color = Color(0xFFE2DDD7),
-                        start = Offset(0f, y * gridSpacing),
-                        end = Offset(canvasWidth, y * gridSpacing),
-                        strokeWidth = 1f
-                    )
+            } else {
+                // Real Live OpenStreetMap WebView via Leaflet Engine
+                val initLat = initialLocation?.lat ?: UM_CENTER_LAT
+                val initLng = initialLocation?.lng ?: UM_CENTER_LNG
+
+                // Serialize verified locations into lightweight JSON for Leaflet
+                val locationsJson = remember {
+                    CampusLocationProvider.allLocations
+                        .filter { it.lat != null && it.lng != null }
+                        .joinToString(prefix = "[", postfix = "]") { loc ->
+                            val cleanName = loc.name.replace("\"", "\\\"").replace("'", "\\'")
+                            val cleanCat = loc.category.replace("\"", "\\\"").replace("'", "\\'")
+                            """{"id":"${loc.id}","name":"$cleanName","category":"$cleanCat","lat":${loc.lat},"lng":${loc.lng}}"""
+                        }
                 }
 
-                // 2. Draw UM Campus perimeter guide circle (~1.5 km campus radius)
-                val umCenterX = centerX + ((101.6538 - centerLng) * scale * 1.05f).toFloat()
-                val umCenterY = centerY - ((3.1209 - centerLat) * scale).toFloat()
-                drawCircle(
-                    color = Color(0xFFF08F76).copy(alpha = 0.2f),
-                    radius = (0.015f * scale),
-                    center = Offset(umCenterX, umCenterY),
-                    style = Stroke(
-                        width = 2f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f))
-                    )
-                )
-
-                // 3. Draw all predefined campus locations from locations.json
-                CampusLocationProvider.allLocations.forEach { loc ->
-                    val lat = loc.lat ?: return@forEach
-                    val lng = loc.lng ?: return@forEach
-
-                    val pxX = centerX + ((lng - centerLng) * scale * 1.05f).toFloat()
-                    val pxY = centerY - ((lat - centerLat) * scale).toFloat()
-
-                    // Only draw if within visible canvas bounds
-                    if (pxX in -40f..(canvasWidth + 40f) && pxY in -40f..(canvasHeight + 40f)) {
-                        val isSelected = (loc.lat == selectedLat && loc.lng == selectedLng)
-                        val markerColor = when {
-                            isSelected -> Color(0xFF8A3524) // Deep Accent
-                            loc.id.startsWith("kk") -> Color(0xFF2E7D32) // Residential College Green
-                            loc.category.contains("Faculties", ignoreCase = true) -> Color(0xFF1976D2) // Faculty Blue
-                            loc.category.contains("Off-Campus", ignoreCase = true) -> Color(0xFFF08F76) // Off-Campus Coral
-                            loc.category.contains("Gates", ignoreCase = true) -> Color(0xFF7B1FA2) // Gates Purple
-                            else -> Color(0xFFE65100) // Transit / Landmark
-                        }
-
-                        // Outer ring for selected pin
-                        if (isSelected) {
-                            drawCircle(
-                                color = markerColor.copy(alpha = 0.35f),
-                                radius = 22f,
-                                center = Offset(pxX, pxY)
+                AndroidView(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { ctx ->
+                        WebView(ctx).apply {
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
                             )
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            settings.loadWithOverviewMode = true
+                            settings.useWideViewPort = true
+
+                            // JavaScript bridge to receive pin click events from Leaflet
+                            addJavascriptInterface(object : Any() {
+                                @JavascriptInterface
+                                fun onLocationSelected(id: String, name: String, category: String, lat: Double, lng: Double) {
+                                    post {
+                                        selectedLat = lat
+                                        selectedLng = lng
+                                        selectedName = name
+                                        selectedCategory = category
+                                        isCustomPin = false
+                                    }
+                                }
+
+                                @JavascriptInterface
+                                fun onCustomPinDropped(lat: Double, lng: Double) {
+                                    post {
+                                        selectedLat = lat
+                                        selectedLng = lng
+                                        selectedName = "Custom Pin (${String.format("%.4f", lat)}, ${String.format("%.4f", lng)})"
+                                        selectedCategory = "Custom Location"
+                                        isCustomPin = true
+                                    }
+                                }
+                            }, "AndroidMapBridge")
+
+                            webViewClient = object : WebViewClient() {
+                                override fun onPageFinished(view: WebView?, url: String?) {
+                                    super.onPageFinished(view, url)
+                                    isMapLoading = false
+                                }
+                            }
+                            webChromeClient = WebChromeClient()
+
+                            val html = """
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                                    <style>
+                                        html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #eae6df; }
+                                        .leaflet-control-attribution { font-size: 9px; opacity: 0.7; }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div id="map"></div>
+                                    <script>
+                                        var map = L.map('map', { zoomControl: true }).setView([$initLat, $initLng], 15);
+                                        
+                                        // Standard High-Resolution OpenStreetMap Tiles (100% Free)
+                                        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                            maxZoom: 19,
+                                            attribution: '© OpenStreetMap contributors'
+                                        }).addTo(map);
+
+                                        var locations = $locationsJson;
+                                        var customMarker = null;
+
+                                        // Render verified campus locations as color-coded circular pins
+                                        locations.forEach(function(loc) {
+                                            var color = '#1976D2';
+                                            if (loc.id.indexOf('kk') === 0) color = '#2E7D32';
+                                            else if (loc.category.indexOf('Off-Campus') !== -1) color = '#F08F76';
+                                            else if (loc.category.indexOf('Gates') !== -1) color = '#7B1FA2';
+
+                                            var marker = L.circleMarker([loc.lat, loc.lng], {
+                                                radius: 8,
+                                                fillColor: color,
+                                                color: '#ffffff',
+                                                weight: 2,
+                                                opacity: 1,
+                                                fillOpacity: 0.95
+                                            }).addTo(map);
+
+                                            marker.bindPopup('<b>' + loc.name + '</b><br><small>' + loc.category + '</small>');
+                                            marker.on('click', function() {
+                                                if (window.AndroidMapBridge) {
+                                                    window.AndroidMapBridge.onLocationSelected(loc.id, loc.name, loc.category, loc.lat, loc.lng);
+                                                }
+                                            });
+                                        });
+
+                                        // Tap anywhere on the real street map to drop a draggable pin
+                                        map.on('click', function(e) {
+                                            var lat = e.latlng.lat;
+                                            var lng = e.latlng.lng;
+
+                                            if (customMarker) {
+                                                customMarker.setLatLng(e.latlng);
+                                            } else {
+                                                customMarker = L.marker(e.latlng, { draggable: true }).addTo(map);
+                                                customMarker.on('dragend', function(evt) {
+                                                    var pos = evt.target.getLatLng();
+                                                    if (window.AndroidMapBridge) {
+                                                        window.AndroidMapBridge.onCustomPinDropped(pos.lat, pos.lng);
+                                                    }
+                                                });
+                                            }
+
+                                            if (window.AndroidMapBridge) {
+                                                window.AndroidMapBridge.onCustomPinDropped(lat, lng);
+                                            }
+                                        });
+                                    </script>
+                                </body>
+                                </html>
+                            """.trimIndent()
+
+                            loadDataWithBaseURL("https://tile.openstreetmap.org", html, "text/html", "UTF-8", null)
                         }
-
-                        // Landmark Pin Circle
-                        drawCircle(
-                            color = markerColor,
-                            radius = if (isSelected) 12f else 7f,
-                            center = Offset(pxX, pxY)
-                        )
-                        drawCircle(
-                            color = Color.White,
-                            radius = if (isSelected) 5f else 3f,
-                            center = Offset(pxX, pxY)
-                        )
                     }
-                }
-
-                // 4. Draw Custom Dropped Pin if not matching an exact preset
-                if (isCustomPin) {
-                    val pinX = centerX + ((selectedLng - centerLng) * scale * 1.05f).toFloat()
-                    val pinY = centerY - ((selectedLat - centerLat) * scale).toFloat()
-
-                    drawCircle(
-                        color = Color(0xFFD32F2F).copy(alpha = 0.3f),
-                        radius = 24f,
-                        center = Offset(pinX, pinY)
-                    )
-                    drawCircle(
-                        color = Color(0xFFD32F2F),
-                        radius = 14f,
-                        center = Offset(pinX, pinY)
-                    )
-                    drawCircle(
-                        color = Color.White,
-                        radius = 6f,
-                        center = Offset(pinX, pinY)
-                    )
-                }
+                )
             }
 
-            // Map Controls (Zoom In, Zoom Out, Recenter)
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SmallFloatingActionButton(
-                    onClick = { scale = (scale * 1.25f).coerceAtMost(100000f) },
-                    containerColor = Color.White
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Zoom In")
-                }
-
-                SmallFloatingActionButton(
-                    onClick = { scale = (scale * 0.8f).coerceAtLeast(15000f) },
-                    containerColor = Color.White
-                ) {
-                    Text("-", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                }
-
-                SmallFloatingActionButton(
-                    onClick = {
-                        centerLat = UM_CENTER_LAT
-                        centerLng = UM_CENTER_LNG
-                        scale = DEFAULT_SCALE
-                    },
-                    containerColor = Color(0xFFFDE3D7)
-                ) {
-                    Icon(Icons.Default.Home, contentDescription = "Recenter on UM Campus")
-                }
+            if (isMapLoading && !isPreview) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color(0xFFF08F76)
+                )
             }
 
-            // Bottom Confirmation Card
+            // Bottom Confirmation Floating Card
             Card(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
