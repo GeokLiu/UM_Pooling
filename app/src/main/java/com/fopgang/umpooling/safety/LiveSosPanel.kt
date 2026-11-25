@@ -221,10 +221,7 @@ internal fun LiveSosPanel(
         )
     } ?: context.getString(
         R.string.sos_location_not_available
-    ) ?: context.getString(
-            R.string.sos_location_not_available
-        )
-
+    )
         val unavailable = context.getString(
             R.string.sos_location_not_available
         )

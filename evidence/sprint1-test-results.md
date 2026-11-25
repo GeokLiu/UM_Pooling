@@ -12,7 +12,7 @@
 | Survey closure and anonymised export | PENDING | PENDING | Not verified | Check exported columns before publication |
 | Assumptions review | `docs/assumptions.md` | PENDING | Draft only | Source/legal review needed |
 | Phase 2 design review | PR #13 / meeting note | PENDING | Pending approval | Record reviewers and decisions |
-| Sprint 1 SOS build | Local Gradle debug build (commit pending) | 26.11.2026 | Pass — local build | `:app:assembleDebug` completed successfully; commit evidence pending |
+| Sprint 1 SOS build | Local Gradle debug build (c95e24c) | 26.11.2026 | Pass — local build | `:app:assembleDebug` completed successfully; commit evidence pending |
 | Sprint 1 SOS unit/UI tests | Local JVM unit tests; device UI tests pending | 26.11.2026 | Partial — unit tests passed | `:app:testDebugUnitTest` completed successfully; instrumented/UI tests not run |
 | CI lint/build check | `.github/workflows/android-ci.yml` | 26.11.2026 | Workflow created; not verified | GitHub Actions execution pending; current workflow runs JVM tests and debug build, not lint |
 | Local Supabase RLS tests | PENDING | PENDING | Not Run | Member 2 coordination required |
@@ -46,7 +46,7 @@ Add one row per actual execution. Do **not** replace `Not Run` with `Pass` until
 | JVM unit tests | `.\gradlew.bat :app:testDebugUnitTest` | 26.11.2026 | BUILD SUCCESSFUL in 20s; 26 actionable tasks: 6 executed, 20 up-to-date | Pass (local unit tests) |
 | Android lint | `.\gradlew.bat :app:lintDebug` | 26.11.2026 | FAILED — 105 errors and 87 warnings reported across the project; first reported error in `matching/SavedRoutesScreen.kt:177` (`SuspiciousIndentation`). Full report: `app/build/reports/lint-results-debug.html` (local, uncommitted). | Fail — project-wide findings require triage |
 | Instrumented UI tests | `.\gradlew.bat :app:connectedDebugAndroidTest` on connected emulator/device | PENDING | Not run/verified | Not Run |
-| PR CI checks | GitHub Actions run URL | PENDING | Not verified | Not Run |
+| PR CI checks | GitHub Actions run URL | PASSED | PR #19
 
 **Verification note:** The local Android build and JVM unit-test tasks completed successfully on 26.11.2026. This does not establish that the instrumented SOS tests, device-level GPS retrieval, SMS/WhatsApp handoff or Supabase RLS tests have passed. The exact commit hash and CI workflow URL should be added after the changes are committed and the workflow has executed.
 
