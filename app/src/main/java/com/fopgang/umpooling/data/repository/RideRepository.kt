@@ -11,6 +11,7 @@ import com.fopgang.umpooling.data.TripOffer
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -32,6 +33,25 @@ class RideRepository {
                     eq("status", OfferStatus.OPEN)
                     gt("available_seats", 0)
                 }
+                order("departure_time", order = Order.ASCENDING)
+            }.decodeList<TripOffer>()
+    }
+
+    // 2b. Paginated fetch of open trip offers for the filterable feed (FR2.3)
+    suspend fun getOpenTripOffersPaged(
+        limit: Int = 20,
+        offset: Int = 0
+    ): Result<List<TripOffer>> = suspendRunCatching {
+        val safeLimit = limit.coerceAtLeast(1)
+        val safeOffset = offset.coerceAtLeast(0)
+        SupabaseClientProvider.client.postgrest["trip_offers"]
+            .select(Columns.ALL) {
+                filter {
+                    eq("status", OfferStatus.OPEN)
+                    gt("available_seats", 0)
+                }
+                order("departure_time", order = Order.ASCENDING)
+                range(from = safeOffset.toLong(), to = (safeOffset + safeLimit - 1).toLong())
             }.decodeList<TripOffer>()
     }
 
