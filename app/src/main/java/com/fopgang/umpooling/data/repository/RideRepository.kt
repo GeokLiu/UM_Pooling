@@ -101,4 +101,33 @@ class RideRepository {
             }
         Unit
     }
+
+    // 9. Cancel an open trip offer (FR2.2)
+    suspend fun cancelTripOffer(tripOfferId: String): Result<Unit> = suspendRunCatching {
+        SupabaseClientProvider.client.postgrest["trip_offers"]
+            .update({ set("status", OfferStatus.CANCELLED) }) {
+                filter { eq("trip_offer_id", tripOfferId) }
+            }
+        Unit
+    }
+
+    // 10. Cancel a pending ride request (FR2.2)
+    suspend fun cancelRideRequest(requestId: String): Result<Unit> =
+        updateRequestStatus(requestId, com.fopgang.umpooling.data.RequestStatus.ERROR)
+
+    // 11. Fetch driver's own trip offers for cancellation & expiry management (FR2.2)
+    suspend fun getMyTripOffers(driverId: String): Result<List<TripOffer>> = suspendRunCatching {
+        SupabaseClientProvider.client.postgrest["trip_offers"]
+            .select(Columns.ALL) {
+                filter { eq("driver_id", driverId) }
+            }.decodeList<TripOffer>()
+    }
+
+    // 12. Fetch user's own ride requests for cancellation & expiry management (FR2.2)
+    suspend fun getMyRideRequests(userId: String): Result<List<RideRequest>> = suspendRunCatching {
+        SupabaseClientProvider.client.postgrest["ride_requests"]
+            .select(Columns.ALL) {
+                filter { eq("user_id", userId) }
+            }.decodeList<RideRequest>()
+    }
 }

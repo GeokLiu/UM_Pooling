@@ -66,7 +66,7 @@ fun FeedScreen(
             isLoading = true
             repository.getOpenTripOffers().fold(
                 onSuccess = { list ->
-                    offers = list
+                    offers = RouteOverlapEngine.filterActiveOffers(list)
                     isLoading = false
                 },
                 onFailure = { err ->
