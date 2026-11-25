@@ -277,4 +277,24 @@
     <string name="contact_saved">Kenalan disimpan.</string>
     <string name="contact_invalid">Masukkan nombor telefon yang sah.</string>
     <string name="contact_remove">Buang kenalan</string>
+    <!-- FR4.2 SOS Kecemasan -->
+    <string name="sos_saved_contact">Kenalan kecemasan yang disimpan</string>
+    <string name="sos_no_contact">Tiada kenalan kecemasan disimpan. Tambahkan kenalan dalam profil anda sebelum menyediakan amaran.</string>
+    <string name="sos_preparing_location">Sedang mendapatkan lokasi semasa anda…</string>
+    <string name="sos_location_unavailable">Lokasi semasa tidak tersedia. Anda masih boleh menyediakan mesej kecemasan tanpa lokasi.</string>
+    <string name="sos_permission_denied">Kebenaran lokasi tidak diberikan. Mesej anda tidak akan mengandungi koordinat GPS.</string>
+    <string name="sos_prepare_message">Sediakan mesej kecemasan</string>
+    <string name="sos_message_explanation">Pilih SMS atau WhatsApp untuk menyemak dan menghantar mesej sendiri. Membuka aplikasi tidak mengesahkan penghantaran.</string>
+    <string name="sos_send_sms">Buka SMS</string>
+    <string name="sos_send_whatsapp">Buka WhatsApp</string>
+    <string name="sos_cancel">Batal</string>
+    <string name="sos_composer_error">Tidak dapat membuka aplikasi pemesejan. Semak aplikasi yang dipasang dan cuba lagi.</string>
+    <string name="sos_emergency_body">Bantuan kecemasan diperlukan. Perjalanan: %1$s. Laluan: %2$s ke %3$s. Kenderaan: %4$s. Lokasi: %5$s.</string>
+    <string name="sos_location_not_available">Tidak tersedia</string>
+    <string name="sos_location_map_link">https://www.google.com/maps?q=%1$s,%2$s</string>
+    <string name="sos_hold_explanation">Lepaskan awal untuk membatalkan. Anda perlu menyemak dan menghantar sendiri mesej kecemasan.</string>
+    <string name="sos_trip_details_unavailable">Butiran perjalanan tidak tersedia</string>
+    <string name="sos_location_on_request">Lokasi hanya diminta apabila anda mengaktifkan SOS dan memberikan kebenaran.</string>
+    <string name="sos_manual_delivery">Aplikasi menyediakan mesej; ia tidak menghantarnya secara automatik atau memaklumkan keselamatan kampus.</string>
+    <string name="sos_dialer_error">Tidak dapat membuka aplikasi telefon.</string>
 </resources>
