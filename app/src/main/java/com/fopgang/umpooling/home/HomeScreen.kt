@@ -51,6 +51,7 @@ private val HomeText = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 1
 
 @Composable
 fun HomeScreen(onNavigate: (String) -> Unit, onUnavailable: () -> Unit, modifier: Modifier = Modifier,
+    name: String? = null, showSamples: Boolean = false,
     onSearch: (com.fopgang.umpooling.booking.FindRideCriteria) -> Unit = { onNavigate("find_ride") }) {
     val campus = stringResource(R.string.um_campus)
     val mall = stringResource(R.string.mid_valley)
@@ -89,17 +90,17 @@ fun HomeScreen(onNavigate: (String) -> Unit, onUnavailable: () -> Unit, modifier
                         Box(Modifier.size(48.dp).background(
                             Brush.linearGradient(listOf(Color(0xFFC79C81), Color(0xFF976449))), CircleShape),
                             contentAlignment = Alignment.Center) {
-                            Text("NS", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                            Text(com.fopgang.umpooling.profile.initials(name), color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
                 Spacer(Modifier.height(22.dp))
-                Text(stringResource(R.string.sample_date), Modifier.padding(start = 3.dp),
+                Text(java.time.LocalDate.now(com.fopgang.umpooling.booking.CAMPUS_ZONE).format(java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault())), Modifier.padding(start = 3.dp),
                     fontSize = 15.sp, lineHeight = 19.sp, color = Color(0xFF3D3D3D))
                 Spacer(Modifier.height(6.dp))
                 Text(stringResource(R.string.good_morning), Modifier.padding(start = 3.dp),
                     fontSize = 36.sp, lineHeight = 35.sp, letterSpacing = (-.3).sp, fontWeight = FontWeight.ExtraBold)
-                Text(stringResource(R.string.sample_name), Modifier.padding(start = 3.dp),
+                Text(name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.profile_name_unset), Modifier.padding(start = 3.dp),
                     fontFamily = FontFamily.Serif, fontSize = 34.sp, lineHeight = 35.sp, fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(17.dp))
                 Surface(
@@ -167,9 +168,9 @@ fun HomeScreen(onNavigate: (String) -> Unit, onUnavailable: () -> Unit, modifier
                     QuickAction(stringResource(R.string.saved), R.drawable.home_frame8, Modifier.weight(1f)) { onNavigate("saved") }
                 }
                 Spacer(Modifier.height(22.dp))
-                SectionTitle(stringResource(R.string.available_rides), stringResource(R.string.nearby))
+                SectionTitle(stringResource(R.string.available_rides), stringResource(R.string.see_all), { onNavigate("find_ride") })
                 Spacer(Modifier.height(10.dp))
-                RideCard(ride) { onNavigate(com.fopgang.umpooling.booking.BookingRoute.OfferDetails(ride.offerId).encode()) }
+                if (showSamples) RideCard(ride) { onNavigate(com.fopgang.umpooling.booking.BookingRoute.OfferDetails(ride.offerId).encode()) }
             }
             CommuterNavigation("home", onNavigate,
                 Modifier.align(Alignment.BottomCenter).padding(horizontal = 14.dp).padding(bottom = 30.dp))

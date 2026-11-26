@@ -154,3 +154,20 @@ The existing rollback lifecycle test and new accounting, booking/matching,
 legacy-balance, snapshot, final-seat, duplicate/cancellation and concurrent daily
 cap tests passed. Edge helper tests, Deno type/lint checks and the actual Android
 build/unit-test result are recorded in evidence/sprint2-member2-validation.md.
+
+## Account display correction (26 November)
+
+Authenticated Home uses the current profile name, with registration Auth metadata
+as a fallback for existing profiles whose display_name is blank. Saving personal
+details refreshes this shared profile state. No SQL migration is required.
+Home no longer displays the sample Nisha identity, fake date, nearby count or
+sample offer card for signed-in accounts; See all opens the live paginated feed.
+Profile and personal impact/tier routes use owner-readable user_impact_stats.
+A successful empty response means zero rides/CO2 and No Badge. Loading/failure
+shows unavailable values, never a fabricated zero or demo history. Rating is
+unavailable until an actual rating aggregation is integrated; trust_rating's
+initial default is not presented as a received review score. Sample dashboard
+charts and achievements remain accessible only in explicit Demo mode.
+The live impact screen shows lifetime totals, not invented weekly/monthly or
+campus totals. Test new-user zero state, edited/registered name, repeat login,
+account switching and refresh after completion on a device.

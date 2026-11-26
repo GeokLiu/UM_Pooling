@@ -14,6 +14,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /** The signed-in user's own profile (FR1.3). The app and the tests talk to this interface. */
 interface ProfileGateway {
@@ -52,9 +54,11 @@ class ProfileRepository : ProfileGateway {
         client.auth.currentUserOrNull()?.id ?: error("Not signed in")
 
     override suspend fun load(): Result<UserProfile> = suspendRunCatching {
-        client.postgrest["users"]
+        val profile = client.postgrest["users"]
             .select(Columns.ALL) { filter { eq("usersId", userId()) } }
             .decodeSingle<UserProfile>()
+        val registeredName = client.auth.currentUserOrNull()?.userMetadata?.get("display_name")?.jsonPrimitive?.contentOrNull
+        profile.copy(displayName = resolvedDisplayName(profile.displayName, registeredName))
     }
 
     override suspend fun save(form: ProfileForm): Result<Unit> = suspendRunCatching {
@@ -76,3 +80,6 @@ class ProfileRepository : ProfileGateway {
         Unit
     }
 }
+
+internal fun resolvedDisplayName(profile: String?, registration: String?): String? =
+    profile?.trim()?.takeIf { it.isNotEmpty() } ?: registration?.trim()?.takeIf { it.isNotEmpty() }

@@ -373,4 +373,6 @@
     <string name="sos_location_on_request">Location is requested only when you activate SOS and grant permission.</string>
     <string name="sos_manual_delivery">The app prepares a message; it does not send it automatically or notify campus security.</string>
     <string name="sos_dialer_error">Unable to open the phone dialer.</string>
+    <string name="account_stats_unavailable">Statistics are loading or unavailable. Reopen this screen to retry.</string>
+    <string name="account_no_activity">No completed rides yet. Your impact will appear after eligible trips are completed.</string>
 </resources>

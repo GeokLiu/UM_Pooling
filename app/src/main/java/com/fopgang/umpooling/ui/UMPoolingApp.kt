@@ -104,6 +104,18 @@ private fun UMPoolingContent(authViewModel: AuthViewModel, authState: AuthUiStat
             }
         })
     val profile by profileViewModel.state.collectAsState()
+    var impact by remember(owner) { mutableStateOf<com.fopgang.umpooling.data.repository.PersonalImpact?>(null) }
+    var impactLoaded by remember(owner) { mutableStateOf(false) }
+    val routeEntry by nav.currentBackStackEntryAsState()
+    LaunchedEffect(owner, routeEntry?.destination?.route) {
+        if (owner != null) {
+            profileViewModel.load()
+            impactLoaded = false
+            impact = null
+            com.fopgang.umpooling.data.repository.ImpactRepository().personal()
+                .onSuccess { impact = it; impactLoaded = true }
+        }
+    }
     val account by accountViewModel.state.collectAsState()
     val notificationPreferences=account.preferences
     val savePreferences:(NotificationPreferences)->Unit=accountViewModel::savePreferences
@@ -162,7 +174,7 @@ private fun UMPoolingContent(authViewModel: AuthViewModel, authState: AuthUiStat
                     composable("verify") { VerificationScreen(authViewModel::logout,message,navigate,authState,authViewModel::verify,authViewModel::resend) }
                 } else {
                     composable("home") {
-                        HomeScreen(navigate,unavailable,onSearch={ criteria=it; navigate("find_ride") })
+                        HomeScreen(navigate,unavailable,name=profile.profile?.displayName,showSamples=demo,onSearch={ criteria=it; navigate("find_ride") })
                     }
                     composable("find_ride") {
                         if (!demo) Column {
@@ -300,7 +312,10 @@ private fun UMPoolingContent(authViewModel: AuthViewModel, authState: AuthUiStat
                     composable("chat/trip/{id}") {entry->if(owner!=null) LiveChatScreen(owner,ConversationKind.TRIP,entry.arguments!!.getString("id")!!,back)}
                     composable("profile") { ProfileScreen(navigate,unavailable,message,
                         notificationPreferences.push,{savePreferences(notificationPreferences.copy(push=it))},authViewModel::logout,
-                        name=profile.profile?.displayName,role=profile.profile?.usersRole) }
+                        name=profile.profile?.displayName,role=profile.profile?.usersRole,
+                        rides=impact?.totalTrips?.toString() ?: if (impactLoaded) "0" else "—",
+                        co2=impact?.co2Kg?.let { String.format(java.util.Locale.getDefault(), "%.2f", it) } ?: if (impactLoaded) "0" else "—",
+                        tier=impact?.tierName ?: if (impactLoaded) "No Badge" else "—") }
                     composable("profile_setup") { ProfileEditScreen(profile,{profileViewModel.clearMessages();back()},profileViewModel::edit,profileViewModel::save,profileViewModel::load) }
                     composable("emergency_contacts") { EmergencyContactScreen(owner ?: "demo",profile,{profileViewModel.clearMessages();back()},profileViewModel::saveContact,profileViewModel::load) }
                     composable("saved") { SavedRoutesScreen(back,unavailable,onNavigate=navigate,initialRoutes=account.routes,showSamples=demo,onRoutesChanged=accountViewModel::saveRoutes) }
@@ -317,8 +332,8 @@ private fun UMPoolingContent(authViewModel: AuthViewModel, authState: AuthUiStat
                         else FlowDestination("SOS unavailable",back,"SOS is available during an active trip.",emptyList())
                     }
                     composable("review") { ReviewScreen(home,message,onSubmit={if(demo) home() else unavailable()}) }
-                    composable("dashboard") { SustainabilityDashboardScreen(navigate,unavailable) }
-                    composable("tier") { GreenCommuterTierScreen(back) }
+                    composable("dashboard") { if (demo) SustainabilityDashboardScreen(navigate,unavailable) else com.fopgang.umpooling.dashboard.PersonalImpactScreen(impact,impactLoaded,back) }
+                    composable("tier") { if (demo) GreenCommuterTierScreen(back) else com.fopgang.umpooling.dashboard.PersonalImpactScreen(impact,impactLoaded,back) }
                     composable("notification_settings") { NotificationSettingsScreen(notificationPreferences,savePreferences,back) }
                 }
             }

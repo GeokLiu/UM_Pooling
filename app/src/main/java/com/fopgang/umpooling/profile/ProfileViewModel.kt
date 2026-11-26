@@ -75,7 +75,7 @@ class ProfileViewModel(
         mutable.update { it.copy(saving = true, saved = false, saveFailed = false, problems = emptySet()) }
         scope.launch {
             gateway.save(form)
-                .onSuccess { mutable.update { it.copy(saving = false, saved = true) } }
+                .onSuccess { mutable.update { it.copy(saving = false, saved = true) }; load() }
                 .onFailure { e ->
                     if (e is CancellationException) throw e
                     mutable.update { it.copy(saving = false, saveFailed = true) }

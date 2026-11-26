@@ -28,7 +28,8 @@ import com.fopgang.umpooling.ui.theme.*
 @Composable
 fun ProfileScreen(navigate: (String) -> Unit, unavailable: () -> Unit, message: (Int) -> Unit,
     notifications: Boolean = true, onNotificationsChange: (Boolean) -> Unit = {}, onLogout: () -> Unit,
-    name: String? = null, role: String? = null) {
+    name: String? = null, role: String? = null,
+    rides: String = "—", rating: String = "—", co2: String = "—", tier: String = "—") {
     CompositionLocalProvider(LocalTextStyle provides TextStyle(fontFamily = FontFamily.SansSerif, color = Ink),
         LocalMinimumInteractiveComponentSize provides 0.dp) {
     Box(Modifier.fillMaxSize().background(Color(0xFFFCEAE2))) {
@@ -60,7 +61,7 @@ fun ProfileScreen(navigate: (String) -> Unit, unavailable: () -> Unit, message: 
                     Surface(onClick = { navigate("tier") }, color = Color(0xFFF9CAB3), shape = CircleShape) {
                         Row(Modifier.padding(horizontal = 16.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             FigmaIcon(R.drawable.profile_frame8, Modifier.size(14.dp))
-                            Text(stringResource(R.string.tier_level), fontSize = 13.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF463027))
+                            Text(tier, fontSize = 13.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF463027))
                         }
                     }
                 }
@@ -71,11 +72,11 @@ fun ProfileScreen(navigate: (String) -> Unit, unavailable: () -> Unit, message: 
             }
             GlassCard(Modifier.fillMaxWidth(), opacity = .9f) {
                 Row(Modifier.padding(vertical = 18.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    ProfileStat(R.string.sample_stat_rides, R.string.rides, Modifier.weight(1f))
+                    ProfileStat(rides, R.string.rides, Modifier.weight(1f))
                     VerticalDivider(Modifier.height(34.dp), color = Color(0xFFF4CBBB))
-                    ProfileStat(R.string.sample_stat_rating, R.string.rating, Modifier.weight(1f))
+                    ProfileStat(rating, R.string.rating, Modifier.weight(1f))
                     VerticalDivider(Modifier.height(34.dp), color = Color(0xFFF4CBBB))
-                    ProfileStat(R.string.sample_stat_co2, R.string.co2_saved, Modifier.weight(1f))
+                    ProfileStat(co2, R.string.co2_saved, Modifier.weight(1f))
                 }
             }
             GlassCard(Modifier.fillMaxWidth(), opacity = .85f, radius = 30.dp) {
@@ -117,9 +118,9 @@ internal fun roleLabel(role: String?): Int = when (role) {
 }
 
 @Composable
-private fun ProfileStat(value: Int, label: Int, modifier: Modifier) {
+private fun ProfileStat(value: String, label: Int, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(stringResource(value), fontSize = 22.sp, lineHeight = 24.sp, fontWeight = FontWeight.ExtraBold)
+        Text(value, fontSize = 22.sp, lineHeight = 24.sp, fontWeight = FontWeight.ExtraBold)
         Text(stringResource(label), fontSize = 12.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold, color = Muted)
     }
 }

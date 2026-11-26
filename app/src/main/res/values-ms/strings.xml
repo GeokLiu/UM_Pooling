@@ -315,4 +315,6 @@
     <string name="sos_location_on_request">Lokasi hanya diminta apabila anda mengaktifkan SOS dan memberikan kebenaran.</string>
     <string name="sos_manual_delivery">Aplikasi menyediakan mesej; ia tidak menghantarnya secara automatik atau memaklumkan keselamatan kampus.</string>
     <string name="sos_dialer_error">Tidak dapat membuka aplikasi telefon.</string>
+    <string name="account_stats_unavailable">Statistik sedang dimuatkan atau tidak tersedia. Buka semula skrin ini untuk mencuba lagi.</string>
+    <string name="account_no_activity">Belum ada perjalanan selesai. Impak anda akan dipaparkan selepas perjalanan yang layak selesai.</string>
 </resources>
