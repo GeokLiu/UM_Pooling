@@ -106,7 +106,8 @@ fun FeedScreen(
             currentOffset = 0
             repository.getOpenTripOffersPaged(limit = FEED_PAGE_SIZE, offset = 0).fold(
                 onSuccess = { page ->
-                    rawOffers = page
+                    // Hide offers that are past departure, full or cancelled (FR2.2).
+                    rawOffers = RouteOverlapEngine.filterActiveOffers(page)
                     hasMorePages = page.size >= FEED_PAGE_SIZE
                     currentOffset = page.size
                     isLoading = false
@@ -129,7 +130,7 @@ fun FeedScreen(
                     val uniqueNext = nextPage.filter {
                         it.tripOfferId == null || it.tripOfferId !in existingIds
                     }
-                    rawOffers = rawOffers + uniqueNext
+                    rawOffers = rawOffers + RouteOverlapEngine.filterActiveOffers(uniqueNext)
                     hasMorePages = nextPage.size >= FEED_PAGE_SIZE
                     currentOffset += nextPage.size
                     isLoadingMore = false

@@ -105,6 +105,47 @@ serve(async (req) => {
       body = `SOS triggered on Trip ${record.trip_id}. Immediate attention required.`;
       isHighPriority = true;
       dataPayload.alert_id = record.alert_id;
+    } // 4. New ride request (FR2.2): notify drivers with overlapping saved routes or open offers
+    else if (table === "ride_requests") {
+      const reqStatus = String(record.status ?? "PENDING").toUpperCase();
+      if (reqStatus !== "PENDING") {
+        return new Response("Request is not pending", { status: 200 });
+      }
+
+      const { data: matches, error: matchErr } = await supabase.rpc(
+        "find_overlapping_drivers_for_request",
+        {
+          p_pickup_geo: record.pickup_geo,
+          p_destination_geo: record.destination_geo ?? null,
+          p_preferred_time: record.preferred_time ?? null,
+          p_requester_id: record.user_id ?? null,
+        },
+      );
+
+      if (matchErr || !matches || matches.length === 0) {
+        return new Response("No overlapping drivers found", { status: 200 });
+      }
+
+      targetUserIds = matches.map((m: { driver_id: string }) => m.driver_id);
+      const firstMatch = matches[0] as {
+        available_seats?: number;
+        departure_time?: string;
+        distance_km?: number;
+      };
+      const seats = firstMatch.available_seats ?? 1;
+      const distKm = Number(firstMatch.distance_km ?? 5.0);
+      const estimatedCo2Kg = (distKm * 0.20).toFixed(2);
+      const depTime = String(record.preferred_time ?? firstMatch.departure_time ?? "Soon");
+      const destLabel = String(record.destination_zone ?? "UM Campus");
+
+      title = "Overlapping Ride Request";
+      const rawBody = `Departs ${depTime} to ${destLabel} • ${seats} seat(s) • ~${estimatedCo2Kg} kg CO2 saved`;
+      body = rawBody.length > MAX_BODY_LENGTH ? `${rawBody.slice(0, MAX_BODY_LENGTH)}...` : rawBody;
+      dataPayload.request_id = String(record.request_id ?? "");
+      dataPayload.destination = destLabel;
+      dataPayload.departure_time = depTime;
+      dataPayload.available_seats = String(seats);
+      dataPayload.estimated_co2_kg = estimatedCo2Kg;
     } else {
       return new Response("Unsupported table", { status: 400 });
     }
