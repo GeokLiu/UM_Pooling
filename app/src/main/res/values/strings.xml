@@ -375,4 +375,8 @@
     <string name="sos_dialer_error">Unable to open the phone dialer.</string>
     <string name="account_stats_unavailable">Statistics are loading or unavailable. Reopen this screen to retry.</string>
     <string name="account_no_activity">No completed rides yet. Your impact will appear after eligible trips are completed.</string>
+    <string name="auth_email_exists_title">Email address already exists</string>
+    <string name="auth_email_exists_body">This email address is already registered. Would you like to log in? If you have not verified it yet, log in and request a new code.</string>
+    <string name="auth_email_exists_login">Go to Log in</string>
+    <string name="auth_email_exists_cancel">Stay here</string>
 </resources>

@@ -171,3 +171,23 @@ charts and achievements remain accessible only in explicit Demo mode.
 The live impact screen shows lifetime totals, not invented weekly/monthly or
 campus totals. Test new-user zero state, edited/registered name, repeat login,
 account switching and refresh after completion on a device.
+
+## Existing-email login prompt (migration 13)
+
+Apply `20261126000013_registration_email_exists.sql` once before installing the
+updated app. Do not replay 09–12. This deliberately adds a public boolean check
+for a valid UM email in auth.users so BOTH verified and unverified registrations
+can offer Log in instead of claiming that a new verification email was sent.
+Only the boolean is returned, never a user ID, confirmation status or profile.
+This is an explicit product choice to disclose registration existence; Supabase
+normally masks some duplicate registrations. Signup CAPTCHA/rate limits do not
+rate-limit direct PostgREST RPC calls; protect/monitor the API accordingly.
+No admin credential is embedded in Android. The check is advisory; Supabase Auth
+still enforces registration uniqueness and password authentication. On a concurrent
+registration race Auth may mask the second attempt; do not treat the client check
+as a uniqueness constraint. Existing-account login still requires the original
+password; unverified accounts can request another code after sign-in prompts.
+
+Manual test: try both a verified and unverified existing UM address, confirm the
+popup, cancel once, then choose Go to Log in. There must be no new account, auto
+login, or misleading sent-email notice. Also test a genuinely new address.

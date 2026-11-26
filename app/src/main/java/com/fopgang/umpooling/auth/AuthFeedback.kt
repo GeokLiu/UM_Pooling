@@ -18,6 +18,7 @@ internal fun AuthIssue.stringId(): Int = when (this) {
     AuthIssue.RATE_LIMIT -> R.string.auth_rate_limit
     AuthIssue.CONFIGURATION -> R.string.auth_configuration
     AuthIssue.SESSION -> R.string.auth_session_error
+    AuthIssue.EMAIL_EXISTS -> R.string.auth_email_exists_body
     AuthIssue.REQUEST -> R.string.auth_request_error
 }
 

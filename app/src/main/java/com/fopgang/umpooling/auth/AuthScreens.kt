@@ -132,7 +132,19 @@ fun WelcomeScreen(navigate: (String) -> Unit) {
 
 @Composable
 fun AuthScreen(register: Boolean, navigate: (String) -> Unit, back: () -> Unit, message: (Int) -> Unit,
-    state: AuthUiState = AuthUiState(), onSubmit: (AuthSubmission) -> Unit = {}) {
+    state: AuthUiState = AuthUiState(), onDismissIssue: () -> Unit = {},
+    onSubmit: (AuthSubmission) -> Unit = {}) {
+    if (register && state.issue == AuthIssue.EMAIL_EXISTS) {
+        AlertDialog(
+            onDismissRequest = onDismissIssue,
+            title = { Text(stringResource(R.string.auth_email_exists_title)) },
+            text = { Text(stringResource(R.string.auth_email_exists_body)) },
+            confirmButton = { TextButton({ onDismissIssue(); navigate("login") }) {
+                Text(stringResource(R.string.auth_email_exists_login))
+            } },
+            dismissButton = { TextButton(onDismissIssue) { Text(stringResource(R.string.auth_email_exists_cancel)) } },
+        )
+    }
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }

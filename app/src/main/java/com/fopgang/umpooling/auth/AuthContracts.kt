@@ -20,7 +20,7 @@ sealed interface AuthAccess {
     data object Demo : AuthAccess
 }
 
-enum class AuthIssue { INVALID_EMAIL, INVALID_FORM, CREDENTIALS, UNVERIFIED, CODE, RATE_LIMIT, CONFIGURATION, SESSION, REQUEST }
+enum class AuthIssue { INVALID_EMAIL, INVALID_FORM, CREDENTIALS, UNVERIFIED, CODE, RATE_LIMIT, CONFIGURATION, SESSION, EMAIL_EXISTS, REQUEST }
 enum class AuthNotice { EMAIL_SENT }
 class AuthFailure(val issue: AuthIssue) : Exception()
 

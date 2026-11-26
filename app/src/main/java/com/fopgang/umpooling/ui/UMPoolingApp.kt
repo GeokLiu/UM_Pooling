@@ -169,7 +169,7 @@ private fun UMPoolingContent(authViewModel: AuthViewModel, authState: AuthUiStat
                 if(!protected && authState.access !is AuthAccess.VerificationRequired) {
                     composable("welcome") { WelcomeScreen(navigate) }
                     composable("login") { AuthScreen(false,navigate,back,message,authState) { authViewModel.submit(false,it) } }
-                    composable("register") { AuthScreen(true,navigate,back,message,authState) { authViewModel.submit(true,it) } }
+                    composable("register") { AuthScreen(true,navigate,back,message,authState,onSubmit={ authViewModel.submit(true,it) },onDismissIssue=authViewModel::dismissMessage) }
                 } else if(authState.access is AuthAccess.VerificationRequired) {
                     composable("verify") { VerificationScreen(authViewModel::logout,message,navigate,authState,authViewModel::verify,authViewModel::resend) }
                 } else {

@@ -166,6 +166,21 @@ class AuthViewModelTest {
         assertNull(vm.state.value.issue)
     }
 
+    @Test fun existingRegistrationStaysOnRegisterWithoutPendingVerification() {
+        val gateway = FakeAuth()
+        gateway.registrationResult = Result.failure(AuthFailure(AuthIssue.EMAIL_EXISTS))
+        val saved = SavedStateHandle()
+        val vm = model(gateway, saved)
+        vm.submit(true, registration())
+        assertEquals(AuthIssue.EMAIL_EXISTS, vm.state.value.issue)
+        assertEquals(AuthAccess.SignedOut, vm.state.value.access)
+        assertNull(saved.get<String>("auth.pendingEmail"))
+        assertNull(vm.state.value.notice)
+        assertFalse(vm.state.value.busy)
+        vm.dismissMessage()
+        assertNull(vm.state.value.issue)
+    }
+
     private class FakeAuth(initial: AuthSession = AuthSession.SignedOut) : AuthGateway {
         override val sessions = MutableStateFlow(initial)
         var user = AuthUser("user-a", "a@siswa.um.edu.my", true)
@@ -174,11 +189,12 @@ class AuthViewModelTest {
         var resentEmail: String? = null
         var loginCalls = 0
         var logoutCalls = 0
+        var registrationResult = Result.success(Unit)
         var loginResult = Result.success(Unit)
         var pendingLogin: CompletableDeferred<Result<Unit>>? = null
         override suspend fun signUp(submission: AuthSubmission): Result<Unit> {
             registered = submission
-            return Result.success(Unit)
+            return registrationResult
         }
         override suspend fun signIn(email: String, password: String): Result<Unit> {
             loginCalls++

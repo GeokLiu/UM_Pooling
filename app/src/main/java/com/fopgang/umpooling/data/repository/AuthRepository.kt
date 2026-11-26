@@ -4,6 +4,7 @@ import com.fopgang.umpooling.BuildConfig
 import com.fopgang.umpooling.SupabaseClientProvider
 import com.fopgang.umpooling.auth.*
 import com.fopgang.umpooling.data.UmEmail
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.exception.AuthRestException
@@ -41,6 +42,10 @@ class AuthRepository : AuthGateway {
 
     override suspend fun signUp(submission: AuthSubmission): Result<Unit> = request {
         requireUmEmail(submission.email)
+        val exists = SupabaseClientProvider.client.postgrest.rpc(
+            "registration_email_exists", buildJsonObject { put("p_email", UmEmail.normalize(submission.email)) }
+        ).decodeAs<Boolean>()
+        if (exists) throw AuthFailure(AuthIssue.EMAIL_EXISTS)
         auth.signUpWith(Email) {
             email = UmEmail.normalize(submission.email)
             password = submission.password
@@ -92,6 +97,7 @@ class AuthRepository : AuthGateway {
         catch (failure: AuthFailure) { Result.failure(failure) }
         catch (error: Exception) {
             val issue = when ((error as? AuthRestException)?.let { it.errorCode?.value ?: it.error }) {
+                "user_already_exists", "email_exists", "user_already_registered" -> AuthIssue.EMAIL_EXISTS
                 "email_not_confirmed" -> AuthIssue.UNVERIFIED
                 "invalid_credentials" -> AuthIssue.CREDENTIALS
                 "otp_expired", "otp_disabled" -> AuthIssue.CODE
