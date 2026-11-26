@@ -11,6 +11,7 @@ import com.fopgang.umpooling.data.TripOffer
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -45,6 +46,25 @@ class RideRepository {
                     eq("status", OfferStatus.OPEN)
                     gt("available_seats", 0)
                 }
+                order("departure_time", order = Order.ASCENDING)
+            }.decodeList<TripOffer>()
+    }
+
+    // 2b. Paginated fetch of open trip offers for the filterable feed (FR2.3)
+    suspend fun getOpenTripOffersPaged(
+        limit: Int = 20,
+        offset: Int = 0
+    ): Result<List<TripOffer>> = suspendRunCatching {
+        val safeLimit = limit.coerceAtLeast(1)
+        val safeOffset = offset.coerceAtLeast(0)
+        SupabaseClientProvider.client.postgrest["trip_offers"]
+            .select(Columns.ALL) {
+                filter {
+                    eq("status", OfferStatus.OPEN)
+                    gt("available_seats", 0)
+                }
+                order("departure_time", order = Order.ASCENDING)
+                range(from = safeOffset.toLong(), to = (safeOffset + safeLimit - 1).toLong())
             }.decodeList<TripOffer>()
     }
 
@@ -115,5 +135,34 @@ class RideRepository {
                 }
             }
         Unit
+    }
+
+    // 9. Cancel an open trip offer (FR2.2)
+    suspend fun cancelTripOffer(tripOfferId: String): Result<Unit> = suspendRunCatching {
+        SupabaseClientProvider.client.postgrest["trip_offers"]
+            .update({ set("status", OfferStatus.CANCELLED) }) {
+                filter { eq("trip_offer_id", tripOfferId) }
+            }
+        Unit
+    }
+
+    // 10. Cancel a pending ride request (FR2.2)
+    suspend fun cancelRideRequest(requestId: String): Result<Unit> =
+        updateRequestStatus(requestId, com.fopgang.umpooling.data.RequestStatus.ERROR)
+
+    // 11. Fetch driver's own trip offers for cancellation & expiry management (FR2.2)
+    suspend fun getMyTripOffers(driverId: String): Result<List<TripOffer>> = suspendRunCatching {
+        SupabaseClientProvider.client.postgrest["trip_offers"]
+            .select(Columns.ALL) {
+                filter { eq("driver_id", driverId) }
+            }.decodeList<TripOffer>()
+    }
+
+    // 12. Fetch user's own ride requests for cancellation & expiry management (FR2.2)
+    suspend fun getMyRideRequests(userId: String): Result<List<RideRequest>> = suspendRunCatching {
+        SupabaseClientProvider.client.postgrest["ride_requests"]
+            .select(Columns.ALL) {
+                filter { eq("user_id", userId) }
+            }.decodeList<RideRequest>()
     }
 }

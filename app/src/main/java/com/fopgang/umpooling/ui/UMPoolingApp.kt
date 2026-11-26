@@ -276,7 +276,27 @@ private fun UMPoolingContent(authViewModel: AuthViewModel, authState: AuthUiStat
                     composable("notification_open") { if(owner!=null) LiveNotificationScreen(owner,back,navigate,link?.payload) }
                     composable("driver_offer/{id}") {entry->if(owner!=null) LiveTripsScreen(owner,back,navigate,offerId=entry.arguments?.getString("id"))}
                     composable("trip/{id}") {entry->if(owner!=null) LiveTripsScreen(owner,back,navigate,tripId=entry.arguments?.getString("id"))}
-                    composable("sos_trip/{id}?prepared={prepared}",arguments=listOf(navArgument("prepared"){type=NavType.BoolType;defaultValue=false})) {entry->if(owner!=null) LiveTripsScreen(owner,back,navigate,tripId=entry.arguments?.getString("id"),sos=true,sosPrepared=entry.arguments?.getBoolean("prepared")==true)}
+                    composable(
+                        "sos_trip/{id}?prepared={prepared}",
+                        arguments = listOf(
+                            navArgument("prepared") {
+                                type = NavType.BoolType
+                                defaultValue = false
+                            }
+                        )
+                    ) { entry ->
+                        if (owner != null) {
+                            LiveTripsScreen(
+                                owner = owner,
+                                back = back,
+                                navigate = navigate,
+                                tripId = entry.arguments?.getString("id"),
+                                sos = true,
+                                sosPrepared = entry.arguments?.getBoolean("prepared") == true,
+                                emergencyContact = profile.contact
+                            )
+                        }
+                    }
                     composable("chat/trip/{id}") {entry->if(owner!=null) LiveChatScreen(owner,ConversationKind.TRIP,entry.arguments!!.getString("id")!!,back)}
                     composable("profile") { ProfileScreen(navigate,unavailable,message,
                         notificationPreferences.push,{savePreferences(notificationPreferences.copy(push=it))},authViewModel::logout,

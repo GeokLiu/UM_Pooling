@@ -20,9 +20,21 @@ import com.fopgang.umpooling.safety.LiveSosPanel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.fopgang.umpooling.data.EmergencyContact
 
 @Composable
-fun LiveTripsScreen(owner:String,back:()->Unit,navigate:(String)->Unit,bookingId:String?=null,tripId:String?=null,sos:Boolean=false,offerId:String?=null,sosPrepared:Boolean=false) {
+
+fun LiveTripsScreen(
+    owner: String,
+    back: () -> Unit,
+    navigate: (String) -> Unit,
+    bookingId: String? = null,
+    tripId: String? = null,
+    sos: Boolean = false,
+    offerId: String? = null,
+    sosPrepared: Boolean = false,
+    emergencyContact: EmergencyContact? = null
+) {
  val repo=remember(owner){CoordinationRepository(owner)}
  val vm:CoordinationViewModel=viewModel(factory=object:ViewModelProvider.Factory {
   override fun <T:ViewModel> create(modelClass:Class<T>):T { @Suppress("UNCHECKED_CAST") return CoordinationViewModel(repo) as T }
@@ -94,7 +106,16 @@ fun LiveTripsScreen(owner:String,back:()->Unit,navigate:(String)->Unit,bookingId
       if(trip!=null) RideAction("Trip conversation"){navigate("chat/trip/${trip.id}")}
       else booking?.let {RideAction("Message driver"){navigate("chat/booking/${it.id}")}}
       if(trip?.status=="in_progress" && (trip.driverId==owner || booking?.passengerId==owner)) {
-       if(sos) LiveSosPanel(repo,trip,offer,back,prepared=sosPrepared)
+       if (sos) {
+    LiveSosPanel(
+        repository = repo,
+        trip = trip,
+        offer = offer,
+        back = back,
+        prepared = sosPrepared,
+        emergencyContact = emergencyContact
+    )
+}
        else RideAction("SOS"){navigate("sos_trip/${trip.id}")}
       } else if(sos) Text("SOS is available only during an active trip.")
      }
