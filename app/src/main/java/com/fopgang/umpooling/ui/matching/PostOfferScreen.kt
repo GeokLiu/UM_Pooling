@@ -232,7 +232,14 @@ fun PostOfferScreen(
 
             Button(
                 onClick = {
-                    val user = SupabaseClientProvider.client.auth.currentUserOrNull()
+                    val user = runCatching {
+                        SupabaseClientProvider.client.auth.currentUserOrNull()
+                    }.getOrElse { err ->
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(err.message ?: "Database not configured.")
+                        }
+                        return@Button
+                    }
                     if (user == null) {
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar("Please sign in first.")
